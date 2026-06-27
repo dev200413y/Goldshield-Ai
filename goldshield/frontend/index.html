@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GoldShield AI — Multi-agent non-destructive gold verification system for gold loan processing">
+    <title>GoldShield AI — Gold Verification Dashboard</title>
+    <link rel="stylesheet" href="/static/index.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ═══ Header ═══ -->
+        <header class="app-header">
+            <div class="logo-section">
+                <div class="logo-icon">🛡️</div>
+                <div class="logo-text">
+                    <h1>GoldShield AI</h1>
+                    <span>Non-Destructive Gold Verification System</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="header-badge" id="providerBadge">
+                    <span class="dot"></span>
+                    <span>Demo Mode</span>
+                </div>
+                <div class="header-badge">
+                    <span>🏦</span>
+                    <span>Branch: BR-001</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ═══ Dashboard Stats ═══ -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card animate-in animate-in-delay-1">
+                <div class="stat-icon">📋</div>
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-label">Total Appraisals</div>
+            </div>
+            <div class="stat-card animate-in animate-in-delay-2">
+                <div class="stat-icon">📅</div>
+                <div class="stat-value" id="statToday">0</div>
+                <div class="stat-label">Today</div>
+            </div>
+            <div class="stat-card animate-in animate-in-delay-3">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-value" id="statFlagged">0</div>
+                <div class="stat-label">Flagged Cases</div>
+            </div>
+            <div class="stat-card animate-in animate-in-delay-4">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="statAvgScore">—</div>
+                <div class="stat-label">Avg Score</div>
+            </div>
+            <div class="stat-card animate-in animate-in-delay-5">
+                <div class="stat-icon">⚖️</div>
+                <div class="stat-value" id="statTotalGrams">0g</div>
+                <div class="stat-label">Total Gold</div>
+            </div>
+            <div class="stat-card animate-in animate-in-delay-5">
+                <div class="stat-icon">💰</div>
+                <div class="stat-value" id="statPortfolio">₹0</div>
+                <div class="stat-label">Portfolio Value</div>
+            </div>
+        </div>
+
+        <!-- ═══ New Appraisal Form ═══ -->
+        <div class="glass-card animate-in">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">🔍</span>
+                    New Appraisal
+                </div>
+                <button class="btn btn-sm btn-secondary" id="resetFormBtn" type="button">Reset</button>
+            </div>
+
+            <form id="appraisalForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="customerRef">Customer Reference</label>
+                        <input type="text" id="customerRef" placeholder="e.g., CUST-001" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemDescription">Item Description</label>
+                        <input type="text" id="itemDescription" placeholder="e.g., 22K Gold Ring with stone">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemType">Item Type</label>
+                        <select id="itemType">
+                            <option value="ring">💍 Ring</option>
+                            <option value="bangle">⭕ Bangle</option>
+                            <option value="chain">🔗 Chain / Necklace</option>
+                            <option value="pendant">📿 Pendant</option>
+                            <option value="earring">✨ Earring</option>
+                            <option value="bracelet">⌚ Bracelet</option>
+                            <option value="coin">🪙 Coin</option>
+                            <option value="bar">📦 Bar / Biscuit</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="weightGrams">Weight (grams)</label>
+                        <input type="number" id="weightGrams" step="0.01" min="0.1" placeholder="e.g., 8.5" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="declaredPurity">Declared Purity</label>
+                        <select id="declaredPurity">
+                            <option value="24K">24K (99.9%)</option>
+                            <option value="22K" selected>22K (91.6%)</option>
+                            <option value="18K">18K (75.0%)</option>
+                            <option value="14K">14K (58.3%)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="loanAmount">Loan Amount (₹, optional)</label>
+                        <input type="number" id="loanAmount" step="100" min="0" placeholder="e.g., 40000">
+                    </div>
+                </div>
+
+                <!-- Photo Upload -->
+                <div style="margin-top: 20px;">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--gold-300); text-transform: uppercase; letter-spacing: 0.5px;">
+                        Jewelry Photos (Multi-angle)
+                    </label>
+                    <div class="photo-upload-area" id="photoUploadArea">
+                        <div class="upload-icon">📷</div>
+                        <div class="upload-text">
+                            <strong>Click to upload</strong> or drag & drop<br>
+                            4–10 multi-angle photos recommended
+                        </div>
+                        <input type="file" id="photoInput" multiple accept="image/*" style="display:none">
+                    </div>
+                    <div class="photo-previews" id="photoPreviews"></div>
+                </div>
+
+                <!-- Submit -->
+                <div style="margin-top: 24px; display: flex; gap: 12px;">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        🛡️ Run Full Verification
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ═══ Verification Pipeline (hidden until running) ═══ -->
+        <div class="pipeline-container" id="pipelineContainer">
+            <div class="section-divider">
+                <div class="line"></div>
+                <div class="label">🔬 Verification Pipeline</div>
+                <div class="line"></div>
+            </div>
+
+            <div class="agent-pipeline" id="agentPipeline">
+                <div class="agent-card waiting" id="agent-density">
+                    <div class="agent-icon">⚖️</div>
+                    <div class="agent-name">Density & Volume</div>
+                    <div class="agent-status">Waiting</div>
+                    <div class="agent-provider"></div>
+                </div>
+                <div class="agent-card waiting" id="agent-surface">
+                    <div class="agent-icon">🔎</div>
+                    <div class="agent-name">Surface & Seam</div>
+                    <div class="agent-status">Waiting</div>
+                    <div class="agent-provider"></div>
+                </div>
+                <div class="agent-card waiting" id="agent-hallmark">
+                    <div class="agent-icon">🏛️</div>
+                    <div class="agent-name">Hallmark (BIS)</div>
+                    <div class="agent-status">Waiting</div>
+                    <div class="agent-provider"></div>
+                </div>
+                <div class="agent-card waiting" id="agent-touchstone">
+                    <div class="agent-icon">💎</div>
+                    <div class="agent-name">Touchstone</div>
+                    <div class="agent-status">Waiting</div>
+                    <div class="agent-provider"></div>
+                </div>
+                <div class="agent-card waiting" id="agent-light">
+                    <div class="agent-icon">💡</div>
+                    <div class="agent-name">Light-Signature</div>
+                    <div class="agent-status">Waiting</div>
+                    <div class="agent-provider"></div>
+                </div>
+                <div class="agent-card waiting" id="agent-risk">
+                    <div class="agent-icon">🛡️</div>
+                    <div class="agent-name">Risk Officer</div>
+                    <div class="agent-status">Waiting</div>
+                    <div class="agent-provider"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ 3D Volume Reconstruction (shows during processing) ═══ -->
+        <div class="verdict-panel" id="volumeReconPanel">
+            <div class="section-divider">
+                <div class="line"></div>
+                <div class="label">🧊 3D Volume Reconstruction</div>
+                <div class="line"></div>
+            </div>
+
+            <div class="glass-card" style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+                <div class="model-viewer-container" id="modelViewerContainer">
+                    <div class="wireframe-ring">
+                        <div class="ring-circle r1"></div>
+                        <div class="ring-circle r2"></div>
+                        <div class="ring-circle r3"></div>
+                    </div>
+                </div>
+                <div class="model-stats">
+                    <div class="stat-row"><span>Estimated Volume:</span> <strong id="reconVolume">Scanning...</strong></div>
+                    <div class="stat-row"><span>Computed Density:</span> <strong id="reconDensity" style="color: var(--gold-400);">Scanning...</strong></div>
+                    <div class="stat-row"><span>Reference Scale:</span> <strong id="reconScale">Detected</strong></div>
+                    <p style="font-size: 0.8rem; color: var(--dark-200); margin-top: 12px; line-height: 1.5;">
+                        Photogrammetry-based 3D reconstruction from multi-angle photos.<br>
+                        Calculates precise internal volume to detect hidden base-metal or Tungsten cores.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Verdict Panel (hidden until complete) ═══ -->
+        <div class="verdict-panel" id="verdictPanel">
+
+            <div class="section-divider">
+                <div class="line"></div>
+                <div class="label">🛡️ Verification Verdict</div>
+                <div class="line"></div>
+            </div>
+
+            <div class="glass-card">
+                <div class="verdict-grid">
+                    <div class="score-gauge">
+                        <div class="gauge-circle" id="authenticityGauge" style="--gauge-value: 0; --gauge-color: var(--success);">
+                            <span class="gauge-value" id="authenticityValue">—</span>
+                        </div>
+                        <div class="gauge-label">Authenticity Score</div>
+                    </div>
+                    <div class="score-gauge">
+                        <div class="gauge-circle" id="fraudGauge" style="--gauge-value: 0; --gauge-color: var(--danger);">
+                            <span class="gauge-value" id="fraudValue">—</span>
+                        </div>
+                        <div class="gauge-label">Fraud Probability</div>
+                    </div>
+                    <div class="score-gauge">
+                        <div class="gauge-circle" id="confidenceGauge" style="--gauge-value: 0; --gauge-color: var(--info);">
+                            <span class="gauge-value" id="confidenceValue">—</span>
+                        </div>
+                        <div class="gauge-label">System Confidence</div>
+                    </div>
+                </div>
+
+                <div class="card-title" style="margin-bottom: 8px;">
+                    <span class="icon">📝</span> Detailed Reasoning
+                </div>
+                <div class="reasoning-box" id="reasoningBox"></div>
+                <div class="recommendation-box" id="recommendationBox"></div>
+            </div>
+        </div>
+
+        <!-- ═══ Valuation Panel ═══ -->
+        <div class="verdict-panel" id="valuationPanel">
+            <div class="section-divider">
+                <div class="line"></div>
+                <div class="label">💰 Valuation & LTV</div>
+                <div class="line"></div>
+            </div>
+
+            <div class="glass-card">
+                <div class="valuation-grid" id="valuationGrid">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Fingerprint Panel ═══ -->
+        <div class="verdict-panel" id="fingerprintPanel">
+            <div class="section-divider">
+                <div class="line"></div>
+                <div class="label">🔐 Digital Gold Fingerprint</div>
+                <div class="line"></div>
+            </div>
+
+            <div class="glass-card">
+                <div class="fingerprint-display" id="fingerprintDisplay">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Recent Appraisals Table ═══ -->
+        <div class="section-divider" style="margin-top: 40px;">
+            <div class="line"></div>
+            <div class="label">📋 Recent Appraisals</div>
+            <div class="line"></div>
+        </div>
+
+        <div class="glass-card">
+            <div class="table-container">
+                <table id="appraisalsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Customer</th>
+                            <th>Item</th>
+                            <th>Weight</th>
+                            <th>Purity</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appraisalsBody">
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <div class="empty-icon">📋</div>
+                                    <p>No appraisals yet. Create your first one above.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# GoldShield AI — Python Dependencies
+# Pin versions for demo reproducibility (per ANTIGRAVITY.md §7)
+
+fastapi==0.115.12
+uvicorn==0.34.3
+python-multipart==0.0.20
+pydantic==2.11.3
+httpx==0.28.1
+Pillow==11.2.1
+python-dotenv==1.0.1
