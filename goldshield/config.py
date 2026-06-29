@@ -22,6 +22,12 @@ VISION_PROVIDER_ORDER = ["gemini", "mistral", "ollama", "mock"]
 # If False, uses AI vision heuristics for instant volume estimation (Demo mode).
 USE_PHOTOGRAMMETRY = os.getenv("USE_PHOTOGRAMMETRY", "False").lower() == "true"
 
+# ─── Visual 3D Model (InstantMesh) ──────────────────────────────────────────
+# Path 1: Cosmetic 3D model for the dashboard viewer.
+# NEVER used for volume/density calculation — that's volume_estimator.py's job.
+INSTANTMESH_HF_SPACE = os.getenv("INSTANTMESH_HF_SPACE", "TencentARC/InstantMesh")
+ENABLE_VISUAL_3D = os.getenv("ENABLE_VISUAL_3D", "True").lower() == "true"
+
 # ─── Gemini Config ───────────────────────────────────────────────────────────
 GEMINI_MODEL = "gemini-2.5-flash"
 

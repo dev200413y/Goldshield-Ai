@@ -304,6 +304,79 @@ class Database:
         conn.close()
         return dict(row) if row else None
 
+    # ─── Valuations (Read) ──────────────────────────────────────────────
+
+    def get_valuation(self, appraisal_id: int) -> Optional[Dict]:
+        conn = self._get_conn()
+        row = conn.execute(
+            "SELECT * FROM valuations WHERE appraisal_id = ? ORDER BY valued_at DESC LIMIT 1",
+            (appraisal_id,)
+        ).fetchone()
+        conn.close()
+        if row:
+            result = dict(row)
+            result["violation"] = bool(result.get("ltv_violation", 0))
+            return result
+        return None
+
+    # ─── Full Appraisal (Joined) ────────────────────────────────────────
+
+    def get_full_appraisal(self, appraisal_id: int) -> Optional[Dict]:
+        """Get complete appraisal with verification, valuation, and fingerprint."""
+        appraisal = self.get_appraisal(appraisal_id)
+        if not appraisal:
+            return None
+
+        verification = self.get_verification(appraisal_id)
+        valuation = self.get_valuation(appraisal_id)
+        fingerprint = self.get_fingerprint(appraisal_id)
+
+        return {
+            **appraisal,
+            "verification": verification,
+            "valuation": valuation,
+            "fingerprint": fingerprint,
+        }
+
+    # ─── Detailed Appraisals List ───────────────────────────────────────
+
+    def list_appraisals_detailed(self, limit: int = 100) -> List[Dict]:
+        """List appraisals with joined verification, valuation, and fingerprint data."""
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT a.*, "
+            "v.authenticity_score, v.fraud_probability, v.confidence, v.escalated, "
+            "v.reasoning, v.recommendation, v.suspicious_area, "
+            "v.density_result, v.surface_result, v.hallmark_result, "
+            "v.touchstone_result, v.light_signature_result, "
+            "val.gold_rate_per_gram, val.rate_source, val.fair_market_value, "
+            "val.loan_amount_requested, val.ltv_percent, val.ltv_cap, val.ltv_violation, "
+            "fp.fingerprint_id, fp.visual_hash, fp.hallmark_signature, fp.density_signature "
+            "FROM appraisals a "
+            "LEFT JOIN verification_results v ON a.id = v.appraisal_id "
+            "LEFT JOIN valuations val ON a.id = val.appraisal_id "
+            "LEFT JOIN gold_fingerprints fp ON a.id = fp.appraisal_id "
+            "ORDER BY a.created_at DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        conn.close()
+
+        results = []
+        for r in rows:
+            record = dict(r)
+            # Parse JSON inspector results
+            for key in ["density_result", "surface_result", "hallmark_result",
+                        "touchstone_result", "light_signature_result"]:
+                if record.get(key):
+                    try:
+                        record[key] = json.loads(record[key])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            record["violation"] = bool(record.get("ltv_violation", 0))
+            results.append(record)
+
+        return results
+
     # ─── Dashboard Aggregates ───────────────────────────────────────────
 
     def get_dashboard_stats(self) -> Dict:

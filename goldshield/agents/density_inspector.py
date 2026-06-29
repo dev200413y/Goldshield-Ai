@@ -150,6 +150,7 @@ async def inspect(
     volume_cm3 = 0.0
 
     if USE_PHOTOGRAMMETRY and photos_base64:
+        # Phase 2 — Meshroom/COLMAP-based volume (optional, GPU required)
         logger.info("Photogrammetry is ENABLED. Running COLMAP 3D Reconstruction...")
         pipeline = ColmapPipeline()
         pipeline.save_images(photos_base64)
@@ -159,36 +160,25 @@ async def inspect(
             volume_cm3 = mesh_vol
             provider_used = "colmap_photogrammetry"
         else:
-            logger.warning("Photogrammetry pipeline failed or COLMAP missing. Falling back to AI heuristics.")
+            logger.warning("Photogrammetry pipeline failed or COLMAP missing. Falling back to volume_estimator.")
 
     if volume_cm3 <= 0:
-        # Fallback to AI heuristic estimation
-        dimension_prompt = f"""You are analyzing photos of a gold {item_type} for volume estimation.
-A reference object (coin or ruler) may be visible in the frame for scale.
-
-Please estimate the following dimensions in millimeters:
-- For a ring: outer_diameter_mm, inner_diameter_mm, thickness_mm, width_mm
-- For a bangle: outer_diameter_mm, inner_diameter_mm, width_mm
-- For a chain/necklace/bracelet: link_diameter_mm, link_count (estimate), link_length_mm
-- For a pendant/coin: diameter_mm, thickness_mm
-- For a bar: length_mm, width_mm, height_mm
-
-Also identify the item type if possible.
-
-Return your answer as JSON with an "estimated_dimensions" object and "item_type" field.
-If a reference object is visible, note it in a "reference_object" field."""
-
-        # Use first photo for dimension estimation
-        photo = photos_base64[0] if photos_base64 else ""
-        response_text, provider_used = await vision_call(photo, dimension_prompt)
-        parsed = extract_json_from_response(response_text)
-
-        # Extract dimensions
-        dimensions = parsed.get("estimated_dimensions", {})
-        detected_type = parsed.get("item_type", item_type)
-        
-        # Calculate heuristic volume
-        volume_cm3 = estimate_volume(detected_type or item_type, dimensions)
+        # Primary path: reference-object scale measurement via volume_estimator.py
+        # CRITICAL: This is the ONLY source of volume for density calculation.
+        # The visual 3D model (InstantMesh) must NEVER be used here.
+        from goldshield.vision.volume_estimator import estimate_volume as measure_volume
+        vol_result = await measure_volume(
+            photos_base64=photos_base64,
+            item_type=item_type,
+            weight_grams=weight_grams,
+            declared_purity=declared_purity,
+        )
+        volume_cm3 = vol_result["volume_cm3"]
+        provider_used = vol_result["provider"]
+        logger.info(
+            f"Volume from volume_estimator: {volume_cm3:.4f} cm³ | "
+            f"Method: {vol_result['method']} | Ref: {vol_result['reference_detected']}"
+        )
 
     # Step 2: Compute density
     if volume_cm3 <= 0:

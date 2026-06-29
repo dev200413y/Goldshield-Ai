@@ -1,6 +1,7 @@
 /**
  * GoldShield AI — Frontend Application Logic
- * Handles form submission, agent pipeline animation, verdict display, and dashboard updates.
+ * Handles form submission, agent pipeline animation, verdict display, dashboard updates,
+ * navigation, and Three.js 3D viewer integration.
  */
 
 const API_BASE = '';  // Same origin
@@ -8,6 +9,8 @@ const API_BASE = '';  // Same origin
 // ─── State ──────────────────────────────────────────────────────────────────
 let selectedFiles = [];
 let currentAppraisalId = null;
+let dashboardViewer = null; // Three.js viewer instance for dashboard
+let isRotating = true;
 
 // ─── DOM Elements ───────────────────────────────────────────────────────────
 const form = document.getElementById('appraisalForm');
@@ -28,7 +31,26 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAppraisals();
     setupPhotoUpload();
     setupFormHandlers();
+    setup3DViewerControls();
 });
+
+// ─── Navigation ─────────────────────────────────────────────────────────────
+function switchTab(tabName) {
+    // Update nav buttons
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.toggle('active', tab.id === `tab-${tabName}`);
+    });
+
+    // Initialize records when switching to records tab
+    if (tabName === 'records') {
+        recordsManager.init();
+    }
+}
 
 // ─── Photo Upload ───────────────────────────────────────────────────────────
 function setupPhotoUpload() {
@@ -105,6 +127,26 @@ function resetForm() {
     valuationPanel.classList.remove('active');
     fingerprintPanel.classList.remove('active');
     resetAgentCards();
+
+    // Cleanup Panel 1: 3D Visual Reference
+    const visualPanel = document.getElementById('visualModelPanel');
+    if (visualPanel) visualPanel.classList.remove('active');
+    const glbViewer = document.getElementById('glbModelViewer');
+    if (glbViewer) { glbViewer.style.display = 'none'; glbViewer.removeAttribute('src'); }
+    const fallbackGallery = document.getElementById('photoGalleryFallback');
+    if (fallbackGallery) fallbackGallery.style.display = 'none';
+    if (dashboardViewer) {
+        dashboardViewer.dispose();
+        dashboardViewer = null;
+    }
+
+    // Cleanup Panel 2: Measured Volume & Density
+    const measuredPanel = document.getElementById('measuredVolumePanel');
+    if (measuredPanel) measuredPanel.classList.remove('active');
+    document.getElementById('reconVolume').textContent = '—';
+    document.getElementById('reconDensity').textContent = '—';
+    document.getElementById('reconScale').textContent = '—';
+    document.getElementById('reconMethod').textContent = '';
 }
 
 async function handleSubmit(e) {
@@ -156,10 +198,16 @@ async function handleSubmit(e) {
 
         // Step 2: Show pipeline and animate agents
         showPipeline();
-        showVolumeReconScanning();
+
+        // Step 3: Show Panel 1 (3D Visual Reference) with scanning state
+        initVisualModelViewer(itemType);
+
+        // Step 4: Show Panel 2 (Measured Volume) with scanning state
+        showMeasuredVolumeScanning();
+
         await animateAgentRunning();
 
-        // Step 3: Run verification
+        // Step 5: Run verification
         showToast('Running AI verification pipeline...', 'success');
         const verifyRes = await fetch(`${API_BASE}/api/appraisal/${currentAppraisalId}/verify`, {
             method: 'POST',
@@ -168,16 +216,35 @@ async function handleSubmit(e) {
         if (!verifyRes.ok) throw new Error('Verification failed');
         const verifyData = await verifyRes.json();
 
-        // Step 4: Update agent cards with results
+        // Step 6: Update agent cards with results
         updateAgentResults(verifyData.verdict);
 
-        // Step 5: Show verdict
+        // Step 7: Update Panel 1 — load real GLB if available
+        if (verifyData.visual_model_url) {
+            loadGLBModel(verifyData.visual_model_url);
+        } else {
+            const container = document.getElementById('viewer3dContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div style="font-size: 2rem; margin-bottom: 12px;">⚠️</div>
+                    <p style="color: var(--danger); font-weight: 500;">3D Visual Reference Unavailable</p>
+                    <p style="font-size: 0.8rem; color: var(--dark-200); margin-top: 6px; text-align: center; padding: 0 20px;">
+                        The Hugging Face API connection timed out.<br>Please try again later.
+                    </p>
+                `;
+            }
+        }
+
+        // Step 8: Update Panel 2 — show real measured values
+        showMeasuredVolumeResults(verifyData.verdict);
+
+        // Step 9: Show verdict
         showVerdict(verifyData.verdict);
 
-        // Step 6: Show fingerprint
+        // Step 10: Show fingerprint
         showFingerprint(verifyData.fingerprint);
 
-        // Step 7: Run valuation
+        // Step 11: Run valuation
         const valFormData = new FormData();
         valFormData.append('appraisal_id', currentAppraisalId);
         valFormData.append('loan_amount', loanAmount);
@@ -192,7 +259,7 @@ async function handleSubmit(e) {
             showValuation(valData.valuation);
         }
 
-        // Step 8: Refresh dashboard
+        // Step 12: Refresh dashboard
         loadDashboardStats();
         loadAppraisals();
 
@@ -204,6 +271,149 @@ async function handleSubmit(e) {
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '🛡️ Run Full Verification';
+    }
+}
+
+// ─── Panel 1: 3D Visual Reference (Path 1 — Cosmetic) ──────────────────────
+
+function initVisualModelViewer(itemType) {
+    // Show Panel 1
+    const visualPanel = document.getElementById('visualModelPanel');
+    if (visualPanel) visualPanel.classList.add('active');
+
+    // Hide GLB viewer initially (will show if/when GLB arrives)
+    const glbViewer = document.getElementById('glbModelViewer');
+    if (glbViewer) glbViewer.style.display = 'none';
+
+    // Hide photo fallback
+    const fallbackGallery = document.getElementById('photoGalleryFallback');
+    if (fallbackGallery) fallbackGallery.style.display = 'none';
+
+    // Show Loading State as immediate visual feedback
+    const container = document.getElementById('viewer3dContainer');
+    if (dashboardViewer) {
+        dashboardViewer.dispose();
+        dashboardViewer = null;
+    }
+    if (container) {
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.style.height = '400px';
+        container.innerHTML = `
+            <div style="font-size: 2rem; margin-bottom: 12px; animation: pulse 2s infinite;">⏳</div>
+            <p style="color: var(--gold-400); font-weight: 500;">Generating 3D Mesh...</p>
+            <p style="font-size: 0.8rem; color: var(--dark-200); margin-top: 6px;">Calling Hugging Face API (InstantMesh)</p>
+            <style>@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }</style>
+        `;
+    }
+}
+
+function loadGLBModel(modelUrl) {
+    // When the real GLB from InstantMesh arrives, swap it in
+    const glbViewer = document.getElementById('glbModelViewer');
+    const threejsContainer = document.getElementById('viewer3dContainer');
+
+    if (glbViewer && modelUrl) {
+        // Load GLB into model-viewer
+        // Force bypass cache for the new MIME type
+        glbViewer.src = modelUrl + "?t=" + new Date().getTime();
+        glbViewer.style.display = 'block';
+
+        // Hide Three.js fallback and its controls
+        if (threejsContainer) threejsContainer.style.display = 'none';
+        const controls = document.querySelector('.viewer3d-controls');
+        if (controls) controls.style.display = 'none';
+
+        if (dashboardViewer) {
+            dashboardViewer.dispose();
+            dashboardViewer = null;
+        }
+    }
+}
+
+function showPhotoGalleryFallback() {
+    // If both GLB and Three.js fail, show uploaded photos as a gallery
+    const gallery = document.getElementById('photoGalleryFallback');
+    const grid = document.getElementById('galleryGrid');
+    const threejsContainer = document.getElementById('viewer3dContainer');
+
+    if (gallery && grid) {
+        grid.innerHTML = '';
+        selectedFiles.forEach((file, idx) => {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'gallery-photo';
+            img.alt = `Photo ${idx + 1}`;
+            grid.appendChild(img);
+        });
+        gallery.style.display = 'block';
+        if (threejsContainer) threejsContainer.style.display = 'none';
+    }
+}
+
+function setup3DViewerControls() {
+    const resetBtn = document.getElementById('resetCameraBtn');
+    const toggleBtn = document.getElementById('toggleRotateBtn');
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            // Handle both model-viewer and Three.js
+            const glbViewer = document.getElementById('glbModelViewer');
+            if (glbViewer && glbViewer.style.display !== 'none') {
+                glbViewer.resetTurntableRotation();
+                glbViewer.jumpCameraToGoal();
+            } else if (dashboardViewer) {
+                dashboardViewer.resetCamera();
+            }
+        });
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            isRotating = !isRotating;
+            const glbViewer = document.getElementById('glbModelViewer');
+            if (glbViewer && glbViewer.style.display !== 'none') {
+                glbViewer.autoRotate = isRotating;
+            } else if (dashboardViewer) {
+                dashboardViewer.setAutoRotate(isRotating);
+            }
+            toggleBtn.textContent = isRotating ? '⏸ Pause Rotation' : '▶ Resume Rotation';
+        });
+    }
+}
+
+// ─── Panel 2: Measured Volume & Density (Path 2 — Real Measurement) ─────────
+
+function showMeasuredVolumeScanning() {
+    // Show Panel 2 with 'scanning' state while verification runs
+    const panel = document.getElementById('measuredVolumePanel');
+    if (panel) panel.classList.add('active');
+
+    document.getElementById('reconVolume').textContent = 'Measuring...';
+    document.getElementById('reconDensity').textContent = 'Calculating...';
+    document.getElementById('reconScale').textContent = 'Detecting...';
+    document.getElementById('reconMethod').textContent = '';
+}
+
+function showMeasuredVolumeResults(verdict) {
+    // Populate Panel 2 with real values from volume_estimator.py
+    // These values come from Path 2 — NEVER from the visual model.
+    if (verdict.density_result) {
+        const dr = verdict.density_result;
+        document.getElementById('reconVolume').textContent = dr.estimated_volume_cm3;
+        document.getElementById('reconDensity').textContent = `${dr.density_gcm3}`;
+
+        // Determine reference scale info from the provider
+        const provider = dr.provider || 'ai_estimation';
+        if (provider === 'colmap_photogrammetry') {
+            document.getElementById('reconScale').textContent = 'Photogrammetry';
+            document.getElementById('reconMethod').textContent = 'COLMAP mesh';
+        } else {
+            document.getElementById('reconScale').textContent = 'Detected';
+            document.getElementById('reconMethod').textContent = 'Reference-object scale';
+        }
     }
 }
 
@@ -221,6 +431,8 @@ function resetAgentCards() {
         card.querySelector('.agent-provider').textContent = '';
     });
 }
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function animateAgentRunning() {
     const agents = ['density', 'surface', 'hallmark', 'touchstone', 'light', 'risk'];
@@ -294,44 +506,9 @@ function updateAgentResults(verdict) {
         `Powered by: ${[...providers].join(', ') || 'mock'}`;
 }
 
-// ─── 3D Volume Reconstruction Animation ──────────────────────────────────────
-function showVolumeReconScanning() {
-    const reconPanel = document.getElementById('volumeReconPanel');
-    if (reconPanel) reconPanel.classList.add('active');
-    
-    // Reset stats
-    document.getElementById('reconVolume').textContent = 'Scanning...';
-    document.getElementById('reconDensity').textContent = 'Scanning...';
-    
-    const container = document.getElementById('modelViewerContainer');
-    if (container) container.classList.remove('complete');
-    
-    // Inject photo into the 3D space
-    const firstPhoto = document.querySelector('.photo-preview');
-    if (firstPhoto && container) {
-        const oldImg = container.querySelector('.injected-3d-model');
-        if (oldImg) oldImg.remove();
-        
-        const img = document.createElement('img');
-        img.src = firstPhoto.src;
-        img.className = 'injected-3d-model';
-        // Append to container (behind rings), not to the spinning ring itself
-        container.appendChild(img);
-    }
-}
-
 // ─── Verdict Display ────────────────────────────────────────────────────────
 function showVerdict(verdict) {
     verdictPanel.classList.add('active');
-    
-    // Complete 3D Model Stats
-    if (verdict.density_result) {
-        document.getElementById('reconVolume').textContent = `${verdict.density_result.estimated_volume_cm3} cm³`;
-        document.getElementById('reconDensity').textContent = `${verdict.density_result.density_gcm3} g/cm³`;
-        
-        const container = document.getElementById('modelViewerContainer');
-        if (container) container.classList.add('complete');
-    }
 
     // Animate gauges
     animateGauge('authenticityGauge', 'authenticityValue', verdict.authenticity_score,
@@ -456,6 +633,10 @@ async function loadDashboardStats() {
             stats.average_authenticity_score ? `${stats.average_authenticity_score}` : '—';
         document.getElementById('statTotalGrams').textContent = `${stats.total_gold_grams || 0}g`;
         document.getElementById('statPortfolio').textContent = `₹${formatNumber(stats.total_portfolio_value || 0)}`;
+
+        // Update records badge
+        const badge = document.getElementById('recordsBadge');
+        if (badge) badge.textContent = stats.total_appraisals || 0;
     } catch (err) {
         console.warn('Could not load dashboard stats:', err);
     }
@@ -503,9 +684,7 @@ async function loadAppraisals() {
 }
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+
 
 function escapeHtml(str) {
     if (!str) return '';
