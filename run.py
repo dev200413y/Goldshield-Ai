@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 # Ensure the goldshield package is importable
-project_root = Path(__file__).resolve().parent.parent
+project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
 # Load environment variables from .env if present
@@ -20,8 +20,8 @@ try:
 except ImportError:
     pass
 
-# Set working directory
-os.chdir(Path(__file__).resolve().parent)
+# Set working directory to root so goldshield.db is read correctly
+os.chdir(project_root)
 
 # Fix Windows console encoding
 if sys.platform == "win32":

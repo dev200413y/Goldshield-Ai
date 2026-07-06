@@ -1,1 +1,1 @@
-web: python goldshield/run.py
+web: python run.py
