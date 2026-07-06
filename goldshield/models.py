@@ -33,6 +33,7 @@ class AppraisalInput(BaseModel):
     weight_grams: float = Field(..., gt=0, description="Weight in grams from digital scale")
     declared_purity: str = Field(default="22K", description="Declared caratage: 24K, 22K, 18K, etc.")
     branch_id: str = Field(default="BR-001", description="Branch identifier")
+    water_volume_cm3: float = Field(..., gt=0, description="Manually entered volume from water displacement")
     # Photos are handled separately via file upload, not embedded in this model
 
 

@@ -2017,3 +2017,68 @@ table tr:hover td {
 .animate-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
 .animate-in-delay-4 { animation-delay: 0.4s; opacity: 0; }
 .animate-in-delay-5 { animation-delay: 0.5s; opacity: 0; }
+
+
+/* ─── Tooltips ───────────────────────────────────────────────────────────── */
+.tooltip-container {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip {
+    visibility: hidden;
+    background-color: var(--dark-200);
+    color: var(--text-light);
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 100;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    border: 1px solid var(--dark-100);
+    font-weight: 500;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--dark-100) transparent transparent transparent;
+}
+
+.tooltip-container:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: var(--dark-300);
+    color: var(--gold-400);
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-left: 4px;
+    cursor: help;
+    transition: background 0.2s, color 0.2s;
+}
+
+.info-btn:hover {
+    background: var(--gold-400);
+    color: var(--dark-300);
+}

@@ -11,34 +11,30 @@ from goldshield.vision.vision_provider import vision_call, extract_json_from_res
 
 logger = logging.getLogger("goldshield.agents.hallmark")
 
-HALLMARK_ANALYSIS_PROMPT = """You are an expert at reading and verifying BIS (Bureau of Indian Standards) hallmarks on gold jewelry.
+HALLMARK_ANALYSIS_PROMPT = """You are an expert at reading and verifying hallmarks, assay marks, and stamps on gold jewelry and bullion.
 
-Analyze this close-up image of a jewelry hallmark stamp and check for:
+Analyze this close-up image of a jewelry hallmark stamp or bullion assay mark.
 
+For Indian Jewelry (BIS Hallmark), check for:
 1. **BIS Logo**: The triangular BIS standard mark
-2. **Purity/Caratage Code**: 
-   - 999 = 24K (99.9% pure)
-   - 916 = 22K (91.6% pure)
-   - 875 = 21K
-   - 750 = 18K
-   - 585 = 14K
-3. **HUID (Hallmark Unique Identification)**: A 6-character alphanumeric code (mandatory since July 2021)
-4. **Hallmarking Centre Mark**: Identifier of the assaying/hallmarking centre
-5. **Jeweller's Identification Mark**: The manufacturer/jeweller's registered mark
+2. **Purity/Caratage Code**: 999 (24K), 916 (22K), 875 (21K), 750 (18K), 585 (14K)
+3. **HUID**: A 6-character alphanumeric code
+4. **Assaying Centre / Jeweller Mark**
 
-Also check for:
-- Is the stamp placement natural and consistent with standard practice (typically inner band for rings)?
-- Is the font and engraving quality consistent with official BIS stamps?
-- Any signs of a fake or re-stamped hallmark?
+For International Bullion / Bars:
+1. **Assayer/Refiner Logo or Name**: e.g., Credit Suisse, PAMP, Valcambi, etc.
+2. **Purity/Fineness**: e.g., 999.9, 999
+3. **Weight**: e.g., 1 Kilo, 1 oz
+4. **Serial Number**: If present.
 
 Return your analysis as JSON:
 {
   "hallmark_analysis": {
     "bis_mark_detected": true/false,
-    "caratage_code": "916 or other code found",
-    "huid": "the HUID if detected",
+    "caratage_code": "e.g., 916, 999.9",
+    "huid": "HUID or Serial Number if detected",
     "hallmarking_center": "detected or not",
-    "jeweler_id": "detected or not",
+    "jeweler_id": "detected Maker/Refiner",
     "placement": "description of where the mark is",
     "font_consistency": "description"
   },
@@ -47,8 +43,8 @@ Return your analysis as JSON:
   "full_hallmark_text": "complete text as read from the stamp"
 }
 
-FLAG if: hallmark is missing, malformed, has inconsistent font/depth, or doesn't match expected BIS format.
-PASS if: hallmark appears genuine with all required components present."""
+FLAG if: hallmark/assay mark is missing, malformed, or doesn't match expected formats.
+PASS if: hallmark OR international bullion mark appears genuine with all required components present."""
 
 
 async def inspect(photos_base64: List[str]) -> HallmarkResult:

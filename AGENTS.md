@@ -2,14 +2,12 @@
 
 ## 1. Density & Volume Inspector
 
-**Responsibility:** Estimate the item's true volume non-destructively and compute density to detect internally contaminated cores — the direct answer to the hackathon's stated touchstone blind spot.
+**Responsibility:** Compute density using manually entered water displacement volume to detect internally contaminated cores — the direct answer to the hackathon's stated touchstone blind spot.
 
-**Inputs:** Multi-angle photos (4–10), weight in grams, optional reference-object scale marker in frame.
+**Inputs:** Weight in grams, Manual volume entry in cm³ (via water displacement).
 
 **Method:**
-- Baseline: estimate dimensions from photos using a known reference object (coin/ruler in frame) for scale, approximate volume using jewelry-shape heuristics (ring = torus approximation, chain = cylindrical-link approximation, etc.).
-- Enhancement (optional, time-permitting): photogrammetry-based 3D reconstruction (e.g., Polycam) for a more accurate volume figure.
-- Density = weight ÷ volume. Compare against expected range for declared caratage.
+- Density = weight ÷ manual_volume. Compare against expected range for declared caratage.
 
 **Output:**
 ```json
@@ -39,11 +37,11 @@
 
 ## 3. Hallmark Verification Inspector
 
-**Responsibility:** Verify BIS hallmark presence, placement, and pattern consistency.
+**Responsibility:** Verify BIS hallmark on Indian jewelry OR assay marks on international bullion (e.g. Credit Suisse, PAMP).
 
 **Inputs:** Close-up photo of the hallmark stamp.
 
-**Method:** Vision model performs OCR + pattern-matching against expected BIS hallmark format (mark, caratage code, jeweler ID, hallmarking center mark). Flags missing, malformed, or inconsistently placed hallmarks.
+**Method:** Vision model performs OCR + pattern-matching against expected BIS hallmark format (mark, caratage code, HUID) OR international bullion marks (refiner logo, fineness, weight, serial). Flags missing, malformed, or fake stamps.
 
 **Output:**
 ```json

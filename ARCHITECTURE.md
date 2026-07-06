@@ -150,7 +150,7 @@ This is intentionally **not air-gapped** — internet access and frontier AI API
 
 ## 5. Why a Live 3D Reconstruction (Polycam) Is Optional, Not Core
 
-Photogrammetry-based volume estimation (via a tool like Polycam) improves density accuracy but is not required for the system to function — a simpler bounding-box/reference-object volume estimate from standard multi-angle photos is the default path, with 3D-scan-based volume as an enhancement path if time allows before the July presentation. This keeps the core demo dependency-light.
+Photogrammetry-based volume estimation (via a tool like Polycam) was originally considered, but physical water displacement (manual entry in cm³) proved vastly more reliable for density calculation. The system now uses manual volume entry as the primary path, keeping the core demo dependency-light and accurate, while 3D scans are reserved purely as a visual reference feature.
 
 ---
 
@@ -158,7 +158,7 @@ Photogrammetry-based volume estimation (via a tool like Polycam) improves densit
 
 | Prototype (this build) | Production (future) |
 |---|---|
-| Photo-based volume estimate (bounding box / simple photogrammetry) | Full 3D reconstruction (NeRF/Gaussian Splatting) for hollow-section detection |
+| Manual water displacement volume entry | Full 3D reconstruction (NeRF/Gaussian Splatting) for hollow-section detection |
 | Density mismatch as sole physical signal beyond vision | Eddy-current/conductivity hardware sensor for tungsten-density-match edge cases |
 | Single-bank deployment | Cross-branch/cross-bank fraud-network graph analysis |
 | Cached/manually entered gold rate fallback | Live regulated gold-rate feed integration (e.g., IBJA reference rate) |

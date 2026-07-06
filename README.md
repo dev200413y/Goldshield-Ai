@@ -15,6 +15,13 @@ See `PROBLEM_AND_SOLUTION.md` for the full problem framing and solution rational
 
 ---
 
+## Recent Updates (July 2026)
+- **Manual Volume Entry:** Replaced AI-based volume estimation with a more accurate manual entry for water displacement (cm³), vastly improving the reliability of the Density Inspector.
+- **International Bullion Support:** The Hallmark Inspector now recognizes international assay marks (e.g., Credit Suisse, PAMP) in addition to Indian BIS jewelry hallmarks.
+- **UI Enhancements:** Dashboard updated to allow manual volume entry (with live density calculation previews) and display of uploaded photos.
+
+---
+
 ## 2. Why We Took This On
 
 This is an **additional, optional problem statement** alongside our core submission (RegAgent — Agentic Regulatory Intelligence & Compliance). We volunteered because:

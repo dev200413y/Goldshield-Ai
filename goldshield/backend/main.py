@@ -60,6 +60,7 @@ app.add_middleware(
 
 # In-memory photo storage (per appraisal) — for prototype only
 _photo_store: dict = {}
+_touchstone_photo_store: dict = {}
 
 
 # ─── API Endpoints ───────────────────────────────────────────────────────────
@@ -72,18 +73,18 @@ async def create_appraisal(
     weight_grams: float = Form(...),
     declared_purity: str = Form("22K"),
     branch_id: str = Form("BR-001"),
+    water_volume_cm3: float = Form(...),
     photos: List[UploadFile] = File(default=[]),
+    touchstone_photo: UploadFile = File(default=None),
 ):
     """Create a new appraisal with uploaded photos."""
     # Read and encode photos
     photos_base64 = []
-    if not photos or (len(photos) == 1 and not photos[0].filename):
-        raise HTTPException(status_code=400, detail="At least one photo is required for verification")
-
-    for photo in photos:
-        content = await photo.read()
-        encoded = base64.b64encode(content).decode("utf-8")
-        photos_base64.append(encoded)
+    if photos and len(photos) > 0 and photos[0].filename:
+        for photo in photos:
+            content = await photo.read()
+            encoded = base64.b64encode(content).decode("utf-8")
+            photos_base64.append(encoded)
 
     # Save to database
     appraisal_id = db.create_appraisal(
@@ -94,10 +95,17 @@ async def create_appraisal(
         declared_purity=declared_purity,
         branch_id=branch_id,
         photos_count=len(photos_base64),
+        water_volume_cm3=water_volume_cm3,
     )
 
     # Store photos in memory (prototype — production would use object storage)
     _photo_store[appraisal_id] = photos_base64
+    
+    if touchstone_photo and touchstone_photo.filename:
+        ts_content = await touchstone_photo.read()
+        _touchstone_photo_store[appraisal_id] = base64.b64encode(ts_content).decode("utf-8")
+    else:
+        _touchstone_photo_store[appraisal_id] = None
 
     # Also persist photos to disk for the Records screen
     photo_dir = Path(__file__).resolve().parent.parent / "photo_store" / str(appraisal_id)
@@ -166,9 +174,11 @@ async def run_verification(appraisal_id: int):
         raise HTTPException(status_code=404, detail="Appraisal not found")
 
     photos = _photo_store.get(appraisal_id, [])
+    ts_photo = _touchstone_photo_store.get(appraisal_id, None)
     weight = appraisal["weight_grams"]
     item_type = appraisal.get("item_type", "ring")
     purity = appraisal.get("declared_purity", "22K")
+    water_volume_cm3 = appraisal.get("water_volume_cm3")
 
     logger.info(f"Starting verification pipeline for appraisal {appraisal_id}")
 
@@ -194,10 +204,10 @@ async def run_verification(appraisal_id: int):
         light_result,
         visual_model_url,
     ) = await asyncio.gather(
-        density_inspector.inspect(photos_base64=photos, weight_grams=weight, item_type=item_type, declared_purity=purity),
+        density_inspector.inspect(photos_base64=photos, weight_grams=weight, item_type=item_type, declared_purity=purity, water_volume_cm3=water_volume_cm3),
         surface_inspector.inspect(photos_base64=photos),
         hallmark_inspector.inspect(photos_base64=photos),
-        touchstone_inspector.inspect(photos_base64=photos),
+        touchstone_inspector.inspect(photos_base64=[ts_photo] if ts_photo else []),
         light_signature_inspector.inspect(photos_base64=photos),
         _safe_visual_model(),
     )

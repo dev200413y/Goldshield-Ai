@@ -227,6 +227,20 @@ class RecordsManager {
                 </div>
             </div>
 
+            <!-- Original Photos -->
+            ${data.photos_count && data.photos_count > 0 ? `
+            <div class="detail-section">
+                <div class="detail-section-title">📸 Uploaded Photos</div>
+                <div class="detail-photos-grid" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px;">
+                    ${Array.from({length: data.photos_count}).map((_, i) => `
+                        <a href="/api/photos/${appraisalId}/${i}" target="_blank">
+                            <img src="/api/photos/${appraisalId}/${i}" alt="Jewelry Photo ${i+1}" style="height: 140px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gold-700); cursor: zoom-in;">
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+
             <!-- ═══ PANEL 1: 3D Visual Reference ═══ -->
             <div class="detail-section">
                 <div class="detail-section-title">🧊 3D Visual Reference</div>

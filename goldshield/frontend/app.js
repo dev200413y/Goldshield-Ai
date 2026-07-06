@@ -8,6 +8,7 @@ const API_BASE = '';  // Same origin
 
 // ─── State ──────────────────────────────────────────────────────────────────
 let selectedFiles = [];
+let selectedTouchstoneFile = null;
 let currentAppraisalId = null;
 let dashboardViewer = null; // Three.js viewer instance for dashboard
 let isRotating = true;
@@ -17,6 +18,9 @@ const form = document.getElementById('appraisalForm');
 const photoInput = document.getElementById('photoInput');
 const photoUploadArea = document.getElementById('photoUploadArea');
 const photoPreviews = document.getElementById('photoPreviews');
+const touchstoneInput = document.getElementById('touchstoneInput');
+const touchstoneUploadArea = document.getElementById('touchstoneUploadArea');
+const touchstonePreview = document.getElementById('touchstonePreview');
 const submitBtn = document.getElementById('submitBtn');
 const resetFormBtn = document.getElementById('resetFormBtn');
 
@@ -32,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPhotoUpload();
     setupFormHandlers();
     setup3DViewerControls();
+    setupLiveDensity();
 });
 
 // ─── Navigation ─────────────────────────────────────────────────────────────
@@ -50,6 +55,60 @@ function switchTab(tabName) {
     if (tabName === 'records') {
         recordsManager.init();
     }
+}
+
+// ─── Live Density Calculation ───────────────────────────────────────────────
+function setupLiveDensity() {
+    const weightInput = document.getElementById('weightGrams');
+    const volumeInput = document.getElementById('waterVolume');
+    const liveDensityCalc = document.getElementById('liveDensityCalc');
+    const liveDensityValue = document.getElementById('liveDensityValue');
+    const liveWeightVal = document.getElementById('liveWeightVal');
+    const liveVolVal = document.getElementById('liveVolVal');
+
+    const livePurityGuess = document.getElementById('livePurityGuess');
+
+    function updateDensity() {
+        const w = parseFloat(weightInput.value);
+        const v = parseFloat(volumeInput.value);
+        if (w > 0 && v > 0) {
+            const density = (w / v).toFixed(2);
+            liveDensityValue.textContent = density;
+            if(liveWeightVal) liveWeightVal.textContent = w;
+            if(liveVolVal) liveVolVal.textContent = v;
+            
+            liveDensityCalc.style.display = 'block';
+            
+            let guessedPurity = '';
+            if (density >= 19.10) guessedPurity = 'Likely 24K Pure Gold';
+            else if (density >= 17.50) guessedPurity = 'Likely 22K Gold';
+            else if (density >= 16.90) guessedPurity = 'Likely 21K Gold';
+            else if (density >= 16.20) guessedPurity = 'Likely 20K Gold';
+            else if (density >= 14.80) guessedPurity = 'Likely 18K Gold';
+            else if (density >= 12.50) guessedPurity = 'Likely 14K Gold';
+            else if (density >= 11.00) guessedPurity = 'Likely 10K Gold';
+            else guessedPurity = 'Non-gold / Very Low Purity';
+
+            if (density >= 11.0 && density <= 19.50) {
+                liveDensityCalc.style.color = 'var(--success)';
+                if (livePurityGuess) {
+                    livePurityGuess.textContent = `(${guessedPurity})`;
+                    livePurityGuess.style.color = 'var(--gold-400)';
+                }
+            } else {
+                liveDensityCalc.style.color = 'var(--danger)';
+                if (livePurityGuess) {
+                    livePurityGuess.textContent = `(Warning: Out of standard gold bounds)`;
+                    livePurityGuess.style.color = 'var(--danger)';
+                }
+            }
+        } else {
+            liveDensityCalc.style.display = 'none';
+        }
+    }
+
+    weightInput.addEventListener('input', updateDensity);
+    volumeInput.addEventListener('input', updateDensity);
 }
 
 // ─── Photo Upload ───────────────────────────────────────────────────────────
@@ -74,6 +133,58 @@ function setupPhotoUpload() {
     photoInput.addEventListener('change', (e) => {
         handleFiles(e.target.files);
     });
+
+    // Touchstone Upload
+    touchstoneUploadArea.addEventListener('click', () => touchstoneInput.click());
+    
+    touchstoneUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        touchstoneUploadArea.classList.add('drag-over');
+    });
+
+    touchstoneUploadArea.addEventListener('dragleave', () => {
+        touchstoneUploadArea.classList.remove('drag-over');
+    });
+
+    touchstoneUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        touchstoneUploadArea.classList.remove('drag-over');
+        handleTouchstoneFile(e.dataTransfer.files[0]);
+    });
+
+    touchstoneInput.addEventListener('change', (e) => {
+        handleTouchstoneFile(e.target.files[0]);
+    });
+}
+
+function handleTouchstoneFile(file) {
+    if (file && file.type.startsWith('image/')) {
+        selectedTouchstoneFile = file;
+        renderTouchstonePreview();
+    }
+}
+
+function renderTouchstonePreview() {
+    touchstonePreview.innerHTML = '';
+    const uploadText = touchstoneUploadArea.querySelector('.upload-text');
+    if (selectedTouchstoneFile) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview';
+            img.title = selectedTouchstoneFile.name;
+            img.addEventListener('click', () => {
+                selectedTouchstoneFile = null;
+                renderTouchstonePreview();
+            });
+            touchstonePreview.appendChild(img);
+        };
+        reader.readAsDataURL(selectedTouchstoneFile);
+        uploadText.innerHTML = `<strong>1 photo selected</strong><br>Click preview to remove`;
+    } else {
+        uploadText.innerHTML = `<strong>Click to upload</strong> touchstone<br>streak photo for analysis`;
+    }
 }
 
 function handleFiles(files) {
@@ -121,7 +232,9 @@ function setupFormHandlers() {
 function resetForm() {
     form.reset();
     selectedFiles = [];
+    selectedTouchstoneFile = null;
     renderPhotoPreviews();
+    renderTouchstonePreview();
     pipelineContainer.classList.remove('active');
     verdictPanel.classList.remove('active');
     valuationPanel.classList.remove('active');
@@ -156,16 +269,12 @@ async function handleSubmit(e) {
     const itemDescription = document.getElementById('itemDescription').value;
     const itemType = document.getElementById('itemType').value;
     const weightGrams = document.getElementById('weightGrams').value;
+    const waterVolume = document.getElementById('waterVolume').value;
     const declaredPurity = document.getElementById('declaredPurity').value;
     const loanAmount = document.getElementById('loanAmount').value || 0;
 
-    if (!customerRef || !weightGrams) {
+    if (!customerRef || !weightGrams || !waterVolume) {
         showToast('Please fill in required fields', 'error');
-        return;
-    }
-
-    if (selectedFiles.length === 0) {
-        showToast('Please upload at least one photo for verification', 'error');
         return;
     }
 
@@ -179,12 +288,16 @@ async function handleSubmit(e) {
         formData.append('item_description', itemDescription || `${declaredPurity} Gold ${itemType}`);
         formData.append('item_type', itemType);
         formData.append('weight_grams', weightGrams);
+        if (waterVolume) formData.append('water_volume_cm3', waterVolume);
         formData.append('declared_purity', declaredPurity);
         formData.append('branch_id', 'BR-001');
 
         selectedFiles.forEach(file => {
             formData.append('photos', file);
         });
+        if (selectedTouchstoneFile) {
+            formData.append('touchstone_photo', selectedTouchstoneFile);
+        }
 
         showToast('Creating appraisal...', 'success');
         const createRes = await fetch(`${API_BASE}/api/appraisal`, {
@@ -256,7 +369,7 @@ async function handleSubmit(e) {
 
         if (valRes.ok) {
             const valData = await valRes.json();
-            showValuation(valData.valuation);
+            showValuation(valData.valuation, weightGrams, declaredPurity);
         }
 
         // Step 12: Refresh dashboard
@@ -391,10 +504,20 @@ function showMeasuredVolumeScanning() {
     const panel = document.getElementById('measuredVolumePanel');
     if (panel) panel.classList.add('active');
 
-    document.getElementById('reconVolume').textContent = 'Measuring...';
-    document.getElementById('reconDensity').textContent = 'Calculating...';
-    document.getElementById('reconScale').textContent = 'Detecting...';
-    document.getElementById('reconMethod').textContent = '';
+    const weightGrams = document.getElementById('weightGrams').value;
+    const waterVolume = document.getElementById('waterVolume').value;
+
+    if (weightGrams && waterVolume) {
+        document.getElementById('reconVolume').textContent = waterVolume;
+        document.getElementById('reconDensity').textContent = (weightGrams / waterVolume).toFixed(2);
+        document.getElementById('reconScale').textContent = 'Manual';
+        document.getElementById('reconMethod').textContent = 'Water Displacement';
+    } else {
+        document.getElementById('reconVolume').textContent = 'Measuring...';
+        document.getElementById('reconDensity').textContent = 'Calculating...';
+        document.getElementById('reconScale').textContent = 'Detecting...';
+        document.getElementById('reconMethod').textContent = '';
+    }
 }
 
 function showMeasuredVolumeResults(verdict) {
@@ -407,7 +530,10 @@ function showMeasuredVolumeResults(verdict) {
 
         // Determine reference scale info from the provider
         const provider = dr.provider || 'ai_estimation';
-        if (provider === 'colmap_photogrammetry') {
+        if (provider === 'water_displacement') {
+            document.getElementById('reconScale').textContent = 'Manual';
+            document.getElementById('reconMethod').textContent = 'Water Displacement';
+        } else if (provider === 'colmap_photogrammetry') {
             document.getElementById('reconScale').textContent = 'Photogrammetry';
             document.getElementById('reconMethod').textContent = 'COLMAP mesh';
         } else {
@@ -431,16 +557,26 @@ function resetAgentCards() {
         card.querySelector('.agent-provider').textContent = '';
     });
 }
-
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function animateAgentRunning() {
+    const waterVolume = document.getElementById('waterVolume').value;
     const agents = ['density', 'surface', 'hallmark', 'touchstone', 'light', 'risk'];
+    
     for (const agent of agents) {
         const card = document.getElementById(`agent-${agent}`);
         if (card) {
-            card.className = 'agent-card running';
-            card.querySelector('.agent-status').textContent = 'Analyzing...';
+            // If water volume is provided, density is instantly calculated
+            if (agent === 'density' && waterVolume) {
+                card.classList.remove('waiting');
+                card.classList.add('pass');
+                card.querySelector('.agent-status').textContent = '✓ INSTANT';
+                card.querySelector('.agent-provider').textContent = 'Powered by: Manual Entry';
+            } else {
+                card.classList.remove('waiting');
+                card.classList.add('running');
+                card.querySelector('.agent-status').textContent = 'Processing...';
+            }
         }
         await sleep(300);
     }
@@ -506,6 +642,14 @@ function updateAgentResults(verdict) {
         `Powered by: ${[...providers].join(', ') || 'mock'}`;
 }
 
+// ─── Utility Functions ────────────────────────────────────────────────────────
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 // ─── Verdict Display ────────────────────────────────────────────────────────
 function showVerdict(verdict) {
     verdictPanel.classList.add('active');
@@ -565,24 +709,39 @@ function animateGauge(gaugeId, valueId, targetValue, color) {
 }
 
 // ─── Valuation Display ──────────────────────────────────────────────────────
-function showValuation(valuation) {
+function showValuation(valuation, weight = 10, purity = '24K') {
     valuationPanel.classList.add('active');
 
     const grid = document.getElementById('valuationGrid');
     const ltvClass = valuation.violation ? 'violation' : '';
 
+    const purityMap = { '24K': 1.0, '22K': 0.916, '18K': 0.75, '14K': 0.583 };
+    const factor = purityMap[purity] || 1.0;
+
     grid.innerHTML = `
-        <div class="val-item">
+        <div class="val-item tooltip-container">
             <div class="val-value">₹${formatNumber(valuation.gold_rate_per_gram)}</div>
-            <div class="val-label">Rate / Gram</div>
+            <div class="val-label">Rate / Gram <span class="info-btn">ⓘ</span></div>
+            <div class="tooltip">
+                <strong>API Rate:</strong> Live Price ÷ 31.1035<br>
+                <em>(1 Troy Ounce = 31.1035g)</em>
+            </div>
         </div>
-        <div class="val-item">
+        <div class="val-item tooltip-container">
             <div class="val-value">₹${formatNumber(valuation.fair_market_value)}</div>
-            <div class="val-label">Fair Market Value</div>
+            <div class="val-label">Fair Market Value <span class="info-btn">ⓘ</span></div>
+            <div class="tooltip">
+                <strong>Calculation:</strong><br>
+                ${weight}g (Weight) <br>× ₹${formatNumber(valuation.gold_rate_per_gram)} (Rate) <br>× ${factor} (${purity} Purity)
+            </div>
         </div>
-        <div class="val-item ${ltvClass}">
+        <div class="val-item ${ltvClass} tooltip-container">
             <div class="val-value">${valuation.ltv_percent.toFixed(1)}%</div>
-            <div class="val-label">LTV ${valuation.violation ? '⚠ EXCEEDS CAP' : `(Cap: ${valuation.ltv_cap}%)`}</div>
+            <div class="val-label">LTV ${valuation.violation ? '⚠ EXCEEDS CAP' : `(Cap: ${valuation.ltv_cap}%)`} <span class="info-btn">ⓘ</span></div>
+            <div class="tooltip">
+                <strong>Loan-to-Value:</strong><br>
+                Requested Loan ÷ ₹${formatNumber(valuation.fair_market_value)}
+            </div>
         </div>
         <div class="val-item">
             <div class="val-value">${valuation.rate_source}</div>

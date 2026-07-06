@@ -95,7 +95,7 @@ async def _call_gemini(image_base64: str, prompt: str) -> str:
             ]
         }],
         "generationConfig": {
-            "temperature": 0.2,
+            "temperature": 0.0,
             "maxOutputTokens": 2048,
         }
     }
@@ -132,7 +132,7 @@ async def _call_mistral(image_base64: str, prompt: str) -> str:
                 }
             ]
         }],
-        "temperature": 0.2,
+        "temperature": 0.0,
         "max_tokens": 2048,
     }
 

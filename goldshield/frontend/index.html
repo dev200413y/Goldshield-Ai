@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="GoldShield AI — Multi-agent non-destructive gold verification system for gold loan processing">
     <title>GoldShield AI — Gold Verification Dashboard</title>
-    <link rel="stylesheet" href="/static/index.css">
+    <link rel="stylesheet" href="/static/index.css?v=8">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
     <!-- Google model-viewer for GLB display (Path 1: Visual) -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
@@ -122,13 +122,11 @@
                                 <option value="bar">📦 Bar / Biscuit</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label for="weightGrams">Weight (grams)</label>
-                            <input type="number" id="weightGrams" step="0.01" min="0.1" placeholder="e.g., 8.5" required>
-                        </div>
+
                         <div class="form-group">
                             <label for="declaredPurity">Declared Purity</label>
                             <select id="declaredPurity">
+                                <option value="Unknown">Unknown / Not Sure</option>
                                 <option value="24K">24K (99.9%)</option>
                                 <option value="22K" selected>22K (91.6%)</option>
                                 <option value="18K">18K (75.0%)</option>
@@ -141,21 +139,77 @@
                         </div>
                     </div>
 
-                    <!-- Photo Upload -->
-                    <div style="margin-top: 20px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--gold-300); text-transform: uppercase; letter-spacing: 0.5px;">
-                            Jewelry Photos (Multi-angle)
-                        </label>
-                        <div class="photo-upload-area" id="photoUploadArea">
-                            <div class="upload-icon">📷</div>
-                            <div class="upload-text">
-                                <strong>Click to upload</strong> or drag & drop<br>
-                                4–10 multi-angle photos recommended
+                    <!-- Photo Uploads -->
+                    <div class="input-grid" style="margin-top: 20px;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 600; color: var(--gold-300); text-transform: uppercase; letter-spacing: 0.5px;">
+                                Jewelry Photos (Multi-angle)
+                            </label>
+                            <div class="photo-upload-area" id="photoUploadArea">
+                                <div class="upload-icon">📷</div>
+                                <div class="upload-text">
+                                    <strong>Click to upload</strong> or drag & drop<br>
+                                    Multi-angle photos (optional)
+                                </div>
+                                <input type="file" id="photoInput" multiple accept="image/*" style="display:none">
                             </div>
-                            <input type="file" id="photoInput" multiple accept="image/*" style="display:none">
+                            <div class="photo-previews" id="photoPreviews"></div>
                         </div>
-                        <div class="photo-previews" id="photoPreviews"></div>
+
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 600; color: var(--gold-300); text-transform: uppercase; letter-spacing: 0.5px;">
+                                Touchstone Rub Result (Optional)
+                            </label>
+                            <div class="photo-upload-area" id="touchstoneUploadArea">
+                                <div class="upload-icon">🪨</div>
+                                <div class="upload-text">
+                                    <strong>Click to upload</strong> touchstone<br>
+                                    streak photo for analysis
+                                </div>
+                                <input type="file" id="touchstoneInput" accept="image/*" style="display:none">
+                            </div>
+                            <div class="photo-previews" id="touchstonePreview"></div>
+                        </div>
                     </div>
+
+                    <!-- Measurements & Density -->
+                    <div style="margin-top: 24px;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--gold-300); text-transform: uppercase; letter-spacing: 0.5px;">
+                            Physical Measurements
+                        </label>
+                        <div class="input-grid" style="margin-top: 8px;">
+                            <div class="form-group">
+                                <label for="weightGrams">Weight (grams)</label>
+                                <input type="number" id="weightGrams" step="0.01" min="0.1" placeholder="e.g., 8.5" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="waterVolume">
+                                    Volume (cm³) 
+                                    <span class="tooltip-container" style="display:inline-block; margin-left: 4px;">
+                                        <span class="info-btn" style="margin-left:0;">ⓘ</span>
+                                        <span class="tooltip" style="font-weight:normal; text-transform:none; font-size:12px; min-width: 180px;">
+                                            <strong>Density = Weight ÷ Volume</strong><br><br>
+                                            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                                <tr><th style="text-align: left; padding-bottom: 4px;">Carat</th><th style="text-align: right; padding-bottom: 4px;">Density (g/cm³)</th></tr>
+                                                <tr><td style="color: var(--gold-400);">24K</td><td style="text-align: right;">19.25 - 19.35</td></tr>
+                                                <tr><td style="color: var(--gold-400);">22K</td><td style="text-align: right;">17.70 - 17.90</td></tr>
+                                                <tr><td style="color: var(--gold-400);">21K</td><td style="text-align: right;">17.00 - 17.30</td></tr>
+                                                <tr><td style="color: var(--gold-400);">20K</td><td style="text-align: right;">16.40 - 16.70</td></tr>
+                                                <tr><td style="color: var(--gold-400);">18K</td><td style="text-align: right;">15.20 - 15.60</td></tr>
+                                                <tr><td style="color: var(--gold-400);">14K</td><td style="text-align: right;">13.00 - 13.50</td></tr>
+                                                <tr><td style="color: var(--gold-400);">10K</td><td style="text-align: right;">11.30 - 11.80</td></tr>
+                                            </table>
+                                        </span>
+                                    </span>
+                                </label>
+                                    <input type="number" id="waterVolume" step="0.01" min="0.01" placeholder="e.g., 0.44" required>
+                                    <div id="liveDensityCalc" style="margin-top: 8px; font-size: 0.9rem; color: var(--primary); font-weight: 500; display: none;">
+                                        <strong>Density:</strong> <span id="liveWeightVal">—</span>g ÷ <span id="liveVolVal">—</span>cm³ = <span id="liveDensityValue">—</span> g/cm³
+                                        <div id="livePurityGuess" style="margin-top: 4px; font-size: 0.85rem; color: var(--gold-400);"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                     <!-- Submit -->
                     <div style="margin-top: 24px; display: flex; gap: 12px;">
@@ -448,7 +502,7 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="/static/viewer3d.js?v=3"></script>
-    <script src="/static/app.js?v=3"></script>
-    <script src="/static/records.js?v=3"></script>
+    <script src="/static/app.js?v=12"></script>
+    <script src="/static/records.js?v=4"></script>
 </body>
 </html>

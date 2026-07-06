@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS appraisals (
     declared_purity TEXT DEFAULT '22K',
     branch_id TEXT DEFAULT 'BR-001',
     photos_count INTEGER DEFAULT 0,
+    water_volume_cm3 REAL,
     created_at TEXT NOT NULL
 );
 
@@ -156,15 +157,15 @@ class Database:
     def create_appraisal(self, customer_ref: str, item_description: str,
                          item_type: str, weight_grams: float,
                          declared_purity: str, branch_id: str,
-                         photos_count: int = 0) -> int:
+                         photos_count: int = 0, water_volume_cm3: float = None) -> int:
         conn = self._get_conn()
         now = datetime.utcnow().isoformat()
         cursor = conn.execute(
             "INSERT INTO appraisals (customer_ref, item_description, item_type, "
-            "weight_grams, declared_purity, branch_id, photos_count, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "weight_grams, declared_purity, branch_id, photos_count, water_volume_cm3, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (customer_ref, item_description, item_type, weight_grams,
-             declared_purity, branch_id, photos_count, now)
+             declared_purity, branch_id, photos_count, water_volume_cm3, now)
         )
         appraisal_id = cursor.lastrowid
         conn.commit()

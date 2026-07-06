@@ -10,10 +10,11 @@ Method:
   5. Compare against expected range for declared caratage
 """
 
-import math
+import json
 import logging
-from typing import List
-
+import math
+from typing import Dict, Any, List, Optional
+from pathlib import Path
 from goldshield.models import DensityResult, InspectorResult
 from goldshield.config import GOLD_DENSITY_TABLE, JEWELRY_SHAPES, FRAUD_METAL_DENSITIES, USE_PHOTOGRAMMETRY
 from goldshield.vision.vision_provider import vision_call, extract_json_from_response
@@ -132,6 +133,7 @@ def _identify_possible_core_metal(density: float) -> str:
 async def inspect(
     photos_base64: List[str],
     weight_grams: float,
+    water_volume_cm3: float,
     item_type: str = "ring",
     declared_purity: str = "22K",
 ) -> DensityResult:
@@ -143,13 +145,20 @@ async def inspect(
     3. Density is computed and compared to expected range
     """
     # Get expected density range
-    expected_range = list(GOLD_DENSITY_TABLE.get(declared_purity, (17.7, 17.9)))
+    if declared_purity == "Unknown":
+        expected_range = [11.3, 19.35] # Valid range for all typical gold
+    else:
+        expected_range = list(GOLD_DENSITY_TABLE.get(declared_purity, (17.7, 17.9)))
 
     # Step 1: Volume Estimation
     provider_used = "none"
     volume_cm3 = 0.0
 
-    if USE_PHOTOGRAMMETRY and photos_base64:
+    if water_volume_cm3 > 0:
+        volume_cm3 = water_volume_cm3
+        provider_used = "water_displacement"
+        logger.info(f"Using manual water displacement volume: {volume_cm3} cm3")
+    elif USE_PHOTOGRAMMETRY and photos_base64:
         # Phase 2 — Meshroom/COLMAP-based volume (optional, GPU required)
         logger.info("Photogrammetry is ENABLED. Running COLMAP 3D Reconstruction...")
         pipeline = ColmapPipeline()
@@ -186,10 +195,25 @@ async def inspect(
     density = weight_grams / volume_cm3
 
     # Step 4: Compare against expected range
+    # Step 4: Compare against expected range
     low, high = expected_range
     tolerance = 2.0  # Allow ±2 g/cm³ tolerance for estimation errors
-
-    if low - tolerance <= density <= high + tolerance:
+    
+    if declared_purity == "Unknown":
+        inferred_purity = "Unknown"
+        for karat, (k_low, k_high) in GOLD_DENSITY_TABLE.items():
+            if k_low - tolerance <= density <= k_high + tolerance:
+                inferred_purity = karat
+                break
+        
+        if inferred_purity != "Unknown":
+            result = InspectorResult.PASS
+            reason = f"Density {density:.2f} g/cm³ indicates {inferred_purity} gold."
+        else:
+            result = InspectorResult.FLAG
+            reason = f"Density {density:.2f} g/cm³ does not match any standard gold alloy."
+            
+    elif low - tolerance <= density <= high + tolerance:
         if low <= density <= high:
             result = InspectorResult.PASS
             reason = (
