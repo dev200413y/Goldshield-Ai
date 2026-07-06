@@ -110,4 +110,5 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "goldshield.db")
 
 # ─── Server ─────────────────────────────────────────────────────────────────
 SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
-SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
+# Railway passes the 'PORT' environment variable, so check that first
+SERVER_PORT = int(os.getenv("PORT", os.getenv("SERVER_PORT", "8000")))
